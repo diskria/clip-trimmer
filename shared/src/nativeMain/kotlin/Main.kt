@@ -7,10 +7,10 @@ fun main() {
 }
 
 actual fun waitClipboardText(): String {
-    Terminal.exec("clipnotify > /dev/null 2>&1")
-    return Terminal.read("xsel --clipboard --output")
+    Terminal.exec("clipnotify", quiet = true)
+    return Terminal.read("xclip -selection clipboard -o")
 }
 
 actual fun setClipboardText(text: String) {
-    Terminal.send("xsel --clipboard --input", text)
+    Terminal.send("xclip -selection clipboard", text)
 }

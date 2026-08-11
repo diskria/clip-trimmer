@@ -18,7 +18,8 @@ object Terminal {
         }
     }
 
-    fun exec(command: String): Int = system(command)
+    fun exec(command: String, quiet: Boolean = false): Int =
+        system(if (quiet) "$command > /dev/null 2>&1" else command)
 
     private inline fun <R> CPointer<FILE>.use(block: (CPointer<FILE>) -> R): R =
         try {
