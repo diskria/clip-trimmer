@@ -8,9 +8,9 @@ fun main() {
 
 actual fun waitClipboardText(): String {
     Terminal.exec("clipnotify", quiet = true)
-    return Terminal.read("xclip -selection clipboard -o")
+    return Terminal.read("xclip -selection clipboard -o").stdout
 }
 
 actual fun setClipboardText(text: String) {
-    Terminal.send("xclip -selection clipboard", text)
+    Terminal.send("xclip -selection clipboard", stdin = text)
 }

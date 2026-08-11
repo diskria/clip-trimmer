@@ -2,12 +2,14 @@ plugins {
     alias(libs.plugins.kmp)
 }
 
+val binaryName = "clip-trimmer"
+
 kotlin {
     linuxX64 {
         binaries {
             executable {
                 entryPoint = "main"
-                baseName = "clip-trimmer"
+                baseName = binaryName
             }
         }
     }
@@ -19,35 +21,33 @@ kotlin {
     }
 }
 
-tasks.register("systemdInstall") {
+val releaseExecutable = kotlin.linuxX64().binaries.getExecutable("release")
+val userHomeProvider = providers.systemProperty("user.home")
+val installBinDir = objects.directoryProperty().fileProvider(
+    userHomeProvider.map { File(it, ".local/bin") }
+)
+val systemdUserConfigDir = objects.directoryProperty().fileProvider(
+    userHomeProvider.map { File(it, ".config/systemd/user") }
+)
+
+val generateService = tasks.register<GenerateSystemdService>("generateSystemdService") {
     group = "installation"
-    description = "Copies the release binary to ~/.local/bin and restarts the systemd service"
+    description = "Generates systemd service file"
 
-    dependsOn("linkReleaseExecutableLinuxX64")
+    binaryExecutableName.set(binaryName)
+    installDir.set(installBinDir)
+    outputServiceFile.set(layout.buildDirectory.file("generated/systemd/$binaryName.service"))
+}
 
-    doLast {
-        val userHome = System.getProperty("user.home")
-        val targetDir = File("$userHome/.local/bin")
-        if (!targetDir.exists()) {
-            targetDir.mkdirs()
-        }
+tasks.register<SystemdInstallTask>("systemdInstall") {
+    group = "installation"
+    description = "Copies release binary, installs systemd user service, and restarts it"
 
-        val buildBinary = layout.buildDirectory.file("bin/linuxX64/releaseExecutable/clip-trimmer.kexe").get().asFile
-        val targetBinary = File(targetDir, "clip-trimmer")
+    binaryExecutableName.set(binaryName)
+    installDir.set(installBinDir)
+    systemdUserDir.set(systemdUserConfigDir)
+    executableBinary.set(releaseExecutable.outputFile)
+    generatedServiceFile.set(generateService.flatMap { it.outputServiceFile })
 
-        if (buildBinary.exists()) {
-            buildBinary.copyTo(targetBinary, overwrite = true)
-            targetBinary.setExecutable(true)
-            println("Binary successfully installed to: ${targetBinary.absolutePath}")
-
-            val process = ProcessBuilder("systemctl", "--user", "restart", "clip-trimmer.service").start()
-            if (process.waitFor() == 0) {
-                println("Service clip-trimmer.service successfully restarted!")
-            } else {
-                println("Failed to restart clip-trimmer.service (it might not be enabled or created yet).")
-            }
-        } else {
-            error("Binary file not found at: ${buildBinary.absolutePath}")
-        }
-    }
+    dependsOn(releaseExecutable.linkTaskProvider)
 }

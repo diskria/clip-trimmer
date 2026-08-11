@@ -4,16 +4,18 @@ import platform.posix.*
 @OptIn(ExperimentalForeignApi::class)
 object Terminal {
 
-    fun read(command: String): String =
+    fun read(command: String): CommandResult =
         popen(command, "r")?.use { fp ->
             val result = StringBuilder()
             fp.forEachChunk { result.append(it.toKString()) }
             result.toString()
-        }.orEmpty()
+        }.let { CommandResult(it.orEmpty()) }
 
-    fun send(command: String, input: String) {
+    value class CommandResult(val stdout: String)
+
+    fun send(command: String, stdin: String) {
         popen(command, "w")?.use { fp ->
-            fputs(input, fp)
+            fputs(stdin, fp)
             fflush(fp)
         }
     }
