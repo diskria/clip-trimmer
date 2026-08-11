@@ -6,13 +6,13 @@ expect fun waitClipboardText(): String
 
 expect fun setClipboardText(text: String)
 
-private var isSelfTrigger: Boolean = false
+private var selfTriggeredText: String? = null
 
 private val clipboardFlow = flow {
     while (currentCoroutineContext().isActive) {
         val text = waitClipboardText()
-        if (isSelfTrigger) {
-            isSelfTrigger = false
+        if (text == selfTriggeredText) {
+            selfTriggeredText = null
             continue
         }
         emit(text)
@@ -27,7 +27,7 @@ suspend fun observeClipboard() {
             else -> text.trim()
         }
         if (trimmed != text) {
-            isSelfTrigger = true
+            selfTriggeredText = trimmed
             setClipboardText(trimmed)
         }
     }
